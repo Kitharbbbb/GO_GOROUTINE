@@ -12,11 +12,7 @@ func main() {
 		ch <- "Hello, world!"
 	}()
 
-	time.Sleep(3 * time.Second)
-
-	go func() {
-		ch <- "Hello, mama!"
-	}()
+	time.Sleep(1 * time.Second)
 
 	select {
 	case msg := <-ch:
