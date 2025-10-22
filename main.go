@@ -2,38 +2,42 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
+	"sync"
 )
 
-func worker(id int, jobs <-chan int, results chan<- string) {
-	for job := range jobs {
-		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
-		results <- fmt.Sprintf("Worker %d finished job %d", id, job)
-	}
+// Counter struct holds a value and a mutex
+type Counter struct {
+	value int
+	mu    sync.Mutex
+}
+
+// Increment method increments the counter's value safely using the mutex
+func (c *Counter) Increment() {
+	c.mu.Lock()   // Lock the mutex before accessing the value
+	c.value++     // Increment the value
+	c.mu.Unlock() // Unlock the mutex after accessing the value
+}
+
+// Value method returns the current value of the counter
+func (c *Counter) Value() int {
+	return c.value
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	jobs := make(chan int, 5)
-	results := make(chan string, 5)
+	var wg sync.WaitGroup
+	counter := Counter{}
 
-	// สร้าง worker 2 ตัว
-	for i := 1; i <= 2; i++ {
-		go worker(i, jobs, results)
+	// Start 10 goroutines
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				counter.Increment()
+			}
+		}()
 	}
 
-	// ส่งงานเข้าไป
-	for j := 1; j <= 5; j++ {
-		jobs <- j
-	}
-	close(jobs)
-
-	// ใช้ select รับผลลัพธ์
-	for i := 0; i < 5; i++ {
-		select {
-		case res := <-results:
-			fmt.Println(res)
-		}
-	}
+	wg.Wait() // Wait for all goroutines to finish
+	fmt.Println("Final counter value:", counter.Value())
 }
