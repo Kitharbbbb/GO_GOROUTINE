@@ -5,39 +5,30 @@ import (
 	"sync"
 )
 
-// Counter struct holds a value and a mutex
-type Counter struct {
-	value int
-	mu    sync.Mutex
-}
-
-// Increment method increments the counter's value safely using the mutex
-func (c *Counter) Increment() {
-	c.mu.Lock()   // Lock the mutex before accessing the value
-	c.value++     // Increment the value
-	c.mu.Unlock() // Unlock the mutex after accessing the value
-}
-
-// Value method returns the current value of the counter
-func (c *Counter) Value() int {
-	return c.value
-}
-
 func main() {
+	var once sync.Once
 	var wg sync.WaitGroup
-	counter := Counter{}
 
-	// Start 10 goroutines
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 100; j++ {
-				counter.Increment()
-			}
-		}()
+	initialize := func() {
+		fmt.Println("Initializing only once")
 	}
 
-	wg.Wait() // Wait for all goroutines to finish
-	fmt.Println("Final counter value:", counter.Value())
+	doWork := func(workerId int) {
+		defer wg.Done()
+		fmt.Printf("Worker %d started\n", workerId)
+		once.Do(initialize) // This will only be executed once
+		fmt.Printf("Worker %d done\n", workerId)
+	}
+
+	numWorkers := 5
+	wg.Add(numWorkers)
+
+	// Launch several goroutines
+	for i := 0; i < numWorkers; i++ {
+		go doWork(i)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	fmt.Println("All workers completed")
 }
